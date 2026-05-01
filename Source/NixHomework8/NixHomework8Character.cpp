@@ -109,10 +109,13 @@ void ANixHomework8Character::Attack(const FInputActionValue& Value)
 	}
 }
 
-void ANixHomework8Character::FinishAttack()
+void ANixHomework8Character::StartAttack()
 {
 	bAttacking = false;
+}
 
+void ANixHomework8Character::FinishAttack()
+{
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC)
 	{

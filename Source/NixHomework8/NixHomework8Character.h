@@ -101,6 +101,9 @@ public:
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
+	UFUNCTION(BlueprintCallable, Category = "Actions")
+	void StartAttack();
+
 	UFUNCTION(BlueprintCallable, Category="Actions")
 	void FinishAttack();
 
