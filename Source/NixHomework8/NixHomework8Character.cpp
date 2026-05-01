@@ -13,6 +13,7 @@
 #include "NiagaraComponent.h"
 #include "NiagaraSystem.h"
 #include "NiagaraFunctionLibrary.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "NixHomework8.h"
 
 
@@ -80,8 +81,12 @@ void ANixHomework8Character::SetupPlayerInputComponent(UInputComponent* PlayerIn
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ANixHomework8Character::Move);
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Completed, this, &ANixHomework8Character::Move);
 
+		// Attack
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &ANixHomework8Character::Attack);
 		EnhancedInputComponent->BindAction(SecondAttackAction, ETriggerEvent::Triggered, this, &ANixHomework8Character::SecondAttack);
+
+		// Taking damage
+		EnhancedInputComponent->BindAction(TakeDamageAction, ETriggerEvent::Triggered, this, &ANixHomework8Character::TakeDamage);
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ANixHomework8Character::Look);
@@ -157,11 +162,7 @@ void ANixHomework8Character::StartAttack()
 
 void ANixHomework8Character::FinishAttack()
 {
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (PC)
-	{
-		PC->ResetIgnoreMoveInput();
-	}
+	ResetMovement();
 }
 
 void ANixHomework8Character::HitDamage()
@@ -177,6 +178,33 @@ void ANixHomework8Character::HitDamage()
 	);
 }
 
+void ANixHomework8Character::TakeDamage(const FInputActionValue& Value)
+{
+	if (!bInDamagedState && Value.Get<bool>())
+	{
+		bDamaged = true;
+		bInDamagedState = true;
+		TakenDamage = FMath::RandRange(0, 100);
+		GEngine->AddOnScreenDebugMessage(2, 10.f, FColor::Cyan, FString::Printf(TEXT("Take damage: %d"), TakenDamage));
+	}
+}
+
+void ANixHomework8Character::StartTakeDamage()
+{
+	bDamaged = false;
+
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		PC->SetIgnoreMoveInput(true);
+	}
+}
+
+void ANixHomework8Character::FinishTakeDamage()
+{
+	bInDamagedState = false;
+	ResetMovement();
+}
+
 void ANixHomework8Character::OnSecondAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
 	if (Montage != SecondAttackMontage)
@@ -185,6 +213,15 @@ void ANixHomework8Character::OnSecondAttackMontageEnded(UAnimMontage* Montage, b
 	}
 
 	FinishAttack();
+}
+
+void ANixHomework8Character::ResetMovement()
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		PC->ResetIgnoreMoveInput();
+	}
 }
 
 void ANixHomework8Character::DoMove(float Right, float Forward)

@@ -54,9 +54,13 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* AttackAction;
 
-	/** Attack Input Action */
+	/** Second Attack Input Action */
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* SecondAttackAction;
+
+	/** Take Damage Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* TakeDamageAction;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Animation")
 	UAnimMontage* SecondAttackMontage;
@@ -93,8 +97,12 @@ protected:
 
 	void SecondAttack(const FInputActionValue& Value);
 
+	void TakeDamage(const FInputActionValue& Value);
+
 	UFUNCTION()
 	void OnSecondAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+
+	void ResetMovement();
 
 public:
 
@@ -129,6 +137,12 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void HitDamage();
 
+	UFUNCTION(BlueprintCallable, Category = "Actions")
+	void StartTakeDamage();
+
+	UFUNCTION(BlueprintCallable, Category = "Actions")
+	void FinishTakeDamage();
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float ForwardInputValue;
 
@@ -137,5 +151,14 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bAttacking = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bDamaged = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	int TakenDamage;
+
+private:
+	bool bInDamagedState = false;
 };
 
