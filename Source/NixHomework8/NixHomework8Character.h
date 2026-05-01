@@ -10,6 +10,7 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
+class UNiagaraSystem;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -53,6 +54,21 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* AttackAction;
 
+	/** Attack Input Action */
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* SecondAttackAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Animation")
+	UAnimMontage* SecondAttackMontage;
+
+	UPROPERTY(EditDefaultsOnly, Category = "FX")
+	UNiagaraSystem* OnAttackParticle;
+
+	UPROPERTY(EditDefaultsOnly, Category = "FX")
+	FName AttackSocket;
+
+	virtual void BeginPlay() override;
+
 public:
 
 	/** Constructor */
@@ -75,6 +91,11 @@ protected:
 
 	void Attack(const FInputActionValue& Value);
 
+	void SecondAttack(const FInputActionValue& Value);
+
+	UFUNCTION()
+	void OnSecondAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+
 public:
 
 	/** Handles move inputs from either controls or UI interfaces */
@@ -93,8 +114,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoJumpEnd();
 
-public:
-
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
@@ -106,6 +125,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="Actions")
 	void FinishAttack();
+
+	UFUNCTION(BlueprintCallable)
+	void HitDamage();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float ForwardInputValue;

@@ -10,7 +10,11 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "NiagaraComponent.h"
+#include "NiagaraSystem.h"
+#include "NiagaraFunctionLibrary.h"
 #include "NixHomework8.h"
+
 
 ANixHomework8Character::ANixHomework8Character()
 {
@@ -50,6 +54,19 @@ ANixHomework8Character::ANixHomework8Character()
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 }
 
+void ANixHomework8Character::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->OnMontageEnded.AddDynamic(
+			this,
+			&ANixHomework8Character::OnSecondAttackMontageEnded
+		);
+	}
+}
+
 void ANixHomework8Character::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	// Set up action bindings
@@ -64,6 +81,7 @@ void ANixHomework8Character::SetupPlayerInputComponent(UInputComponent* PlayerIn
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Completed, this, &ANixHomework8Character::Move);
 
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &ANixHomework8Character::Attack);
+		EnhancedInputComponent->BindAction(SecondAttackAction, ETriggerEvent::Triggered, this, &ANixHomework8Character::SecondAttack);
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ANixHomework8Character::Look);
@@ -109,6 +127,29 @@ void ANixHomework8Character::Attack(const FInputActionValue& Value)
 	}
 }
 
+void ANixHomework8Character::SecondAttack(const FInputActionValue& Value)
+{
+	if (!Value.Get<bool>())
+	{
+		return;
+	}
+
+	if (!SecondAttackMontage) return;
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (!AnimInstance)
+	{
+		return;
+	}
+
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		PC->SetIgnoreMoveInput(true);
+	}
+
+	AnimInstance->Montage_Play(SecondAttackMontage, 1.0f);
+}
+
 void ANixHomework8Character::StartAttack()
 {
 	bAttacking = false;
@@ -121,6 +162,29 @@ void ANixHomework8Character::FinishAttack()
 	{
 		PC->ResetIgnoreMoveInput();
 	}
+}
+
+void ANixHomework8Character::HitDamage()
+{
+	FVector SocketLocation = GetMesh()->GetSocketLocation(AttackSocket);
+
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		GetWorld(),
+		OnAttackParticle,
+		SocketLocation,
+		FRotator::ZeroRotator,
+		FVector(0.2f)
+	);
+}
+
+void ANixHomework8Character::OnSecondAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (Montage != SecondAttackMontage)
+	{
+		return;
+	}
+
+	FinishAttack();
 }
 
 void ANixHomework8Character::DoMove(float Right, float Forward)

@@ -18,8 +18,10 @@ public class NixHomework8 : ModuleRules
 			"StateTreeModule",
 			"GameplayStateTreeModule",
 			"UMG",
-			"Slate"
-		});
+			"Slate",
+			"Niagara",
+            "NiagaraCore"
+        });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 
