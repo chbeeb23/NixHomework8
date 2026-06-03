@@ -14,6 +14,7 @@
 #include "NiagaraSystem.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Net/UnrealNetwork.h"
 #include "NixHomework8.h"
 
 
@@ -53,6 +54,9 @@ ANixHomework8Character::ANixHomework8Character()
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
+
+	bReplicates = true;
+	SetReplicateMovement(true);
 }
 
 void ANixHomework8Character::BeginPlay()
@@ -104,7 +108,7 @@ void ANixHomework8Character::Move(const FInputActionValue& Value)
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
 	// route the input
-	DoMove(MovementVector.X, MovementVector.Y);
+	Server_DoMove(MovementVector);
 }
 
 void ANixHomework8Character::Look(const FInputActionValue& Value)
@@ -113,7 +117,7 @@ void ANixHomework8Character::Look(const FInputActionValue& Value)
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
 	// route the input
-	DoLook(LookAxisVector.X, LookAxisVector.Y);
+	Server_DoLook(LookAxisVector);
 }
 
 void ANixHomework8Character::LookCompleted(const FInputActionValue& Value)
@@ -123,13 +127,7 @@ void ANixHomework8Character::LookCompleted(const FInputActionValue& Value)
 
 void ANixHomework8Character::Attack(const FInputActionValue& Value)
 {
-	bAttacking = Value.Get<bool>();
-
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (PC && bAttacking)
-	{
-		PC->SetIgnoreMoveInput(true);
-	}
+	Server_Attack(Value.Get<bool>());
 }
 
 void ANixHomework8Character::SecondAttack(const FInputActionValue& Value)
@@ -155,12 +153,22 @@ void ANixHomework8Character::SecondAttack(const FInputActionValue& Value)
 	AnimInstance->Montage_Play(SecondAttackMontage, 1.0f);
 }
 
-void ANixHomework8Character::StartAttack()
+void ANixHomework8Character::Server_StartAttack_Implementation()
+{
+	NetMulticast_StartAttack();
+}
+
+void ANixHomework8Character::NetMulticast_StartAttack_Implementation()
 {
 	bAttacking = false;
 }
 
-void ANixHomework8Character::FinishAttack()
+void ANixHomework8Character::Server_FinishAttack_Implementation()
+{
+	Client_FinishAttack();
+}
+
+void ANixHomework8Character::Client_FinishAttack_Implementation()
 {
 	ResetMovement();
 }
@@ -212,7 +220,7 @@ void ANixHomework8Character::OnSecondAttackMontageEnded(UAnimMontage* Montage, b
 		return;
 	}
 
-	FinishAttack();
+	Client_FinishAttack();
 }
 
 void ANixHomework8Character::ResetMovement()
@@ -224,7 +232,24 @@ void ANixHomework8Character::ResetMovement()
 	}
 }
 
-void ANixHomework8Character::DoMove(float Right, float Forward)
+void ANixHomework8Character::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ANixHomework8Character, ForwardInputValue);
+	DOREPLIFETIME(ANixHomework8Character, RightInputValue);
+	DOREPLIFETIME(ANixHomework8Character, bAttacking);
+}
+
+void ANixHomework8Character::Server_DoMove_Implementation(FVector2D MovementVector)
+{
+	ForwardInputValue = MovementVector.Y;
+	RightInputValue = MovementVector.X;
+
+	Client_DoMove(MovementVector);
+}
+
+void ANixHomework8Character::Client_DoMove_Implementation(FVector2D MovementVector)
 {
 	if (GetController() != nullptr)
 	{
@@ -239,15 +264,19 @@ void ANixHomework8Character::DoMove(float Right, float Forward)
 		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
 		// add movement 
-		AddMovementInput(ForwardDirection, Forward);
-		AddMovementInput(RightDirection, Right);
-
-		ForwardInputValue = Forward;
-		RightInputValue = Right;
+		AddMovementInput(ForwardDirection, MovementVector.Y);
+		AddMovementInput(RightDirection, MovementVector.X);
 	}
 }
 
-void ANixHomework8Character::DoLook(float Yaw, float Pitch)
+void ANixHomework8Character::Server_DoLook_Implementation(FVector2D LookAxisVector)
+{
+	RightInputValue = LookAxisVector.X;
+
+	Client_DoLook(LookAxisVector);
+}
+
+void ANixHomework8Character::Client_DoLook_Implementation(FVector2D LookAxisVector)
 {
 	GEngine->AddOnScreenDebugMessage(0, 10.f, FColor::Red, FString::Printf(TEXT("Move Y: %f"), ForwardInputValue));
 	GEngine->AddOnScreenDebugMessage(1, 10.f, FColor::Green, FString::Printf(TEXT("Move X: %f"), RightInputValue));
@@ -256,12 +285,12 @@ void ANixHomework8Character::DoLook(float Yaw, float Pitch)
 	{
 		if (RightInputValue != 1 && RightInputValue != -1)
 		{
-			RightInputValue = Yaw;
+			RightInputValue = LookAxisVector.X;
 		}
 
 		// add yaw and pitch input to controller
-		AddControllerYawInput(Yaw);
-		AddControllerPitchInput(Pitch);
+		AddControllerYawInput(LookAxisVector.X);
+		AddControllerPitchInput(LookAxisVector.Y);
 	}
 }
 
@@ -275,4 +304,29 @@ void ANixHomework8Character::DoJumpEnd()
 {
 	// signal the character to stop jumping
 	StopJumping();
+}
+
+void ANixHomework8Character::Server_Attack_Implementation(bool Value)
+{
+	bAttacking = Value;
+	float Duration = AttackAnim->GetPlayLength() / 2;
+
+	GetWorldTimerManager().SetTimer(
+		AttackTimerHandle,
+		this,
+		&ANixHomework8Character::Server_StartAttack,
+		Duration,
+		false
+	);
+
+	NetMulticast_Attack(Value);
+}
+
+void ANixHomework8Character::NetMulticast_Attack_Implementation(bool Value)
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC && bAttacking)
+	{
+		PC->SetIgnoreMoveInput(true);
+	}
 }

@@ -62,6 +62,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* TakeDamageAction;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+	UAnimSequence* AttackAnim;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Animation")
 	UAnimMontage* SecondAttackMontage;
 
@@ -106,13 +109,23 @@ protected:
 
 public:
 
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	/** Handles move inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoMove(float Right, float Forward);
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Input")
+	virtual void Server_DoMove(FVector2D MovementVector);
+
+	/** Handles move inputs from either controls or UI interfaces */
+	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "Input")
+	virtual void Client_DoMove(FVector2D MovementVector);
 
 	/** Handles look inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoLook(float Yaw, float Pitch);
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Input")
+	virtual void Server_DoLook(FVector2D LookAxisVector);
+
+	/** Handles look inputs from either controls or UI interfaces */
+	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "Input")
+	virtual void Client_DoLook(FVector2D LookAxisVector);
 
 	/** Handles jump pressed inputs from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category="Input")
@@ -122,17 +135,29 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoJumpEnd();
 
+	UFUNCTION(Server, Reliable, Category = "Input")
+	virtual void Server_Attack(bool Value);
+
+	UFUNCTION(NetMulticast, Reliable, Category = "Input")
+	virtual void NetMulticast_Attack(bool Value);
+
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
-	UFUNCTION(BlueprintCallable, Category = "Actions")
-	void StartAttack();
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Actions")
+	void Server_StartAttack();
 
-	UFUNCTION(BlueprintCallable, Category="Actions")
-	void FinishAttack();
+	UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Actions")
+	void NetMulticast_StartAttack();
+
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Actions")
+	void Server_FinishAttack();
+
+	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "Actions")
+	void Client_FinishAttack();
 
 	UFUNCTION(BlueprintCallable)
 	void HitDamage();
@@ -143,13 +168,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Actions")
 	void FinishTakeDamage();
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 	float ForwardInputValue;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 	float RightInputValue;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 	bool bAttacking = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -160,5 +185,7 @@ public:
 
 private:
 	bool bInDamagedState = false;
+
+	FTimerHandle AttackTimerHandle;
 };
 
