@@ -153,12 +153,12 @@ void ANixHomework8Character::SecondAttack(const FInputActionValue& Value)
 	AnimInstance->Montage_Play(SecondAttackMontage, 1.0f);
 }
 
-void ANixHomework8Character::Server_StartAttack_Implementation()
+void ANixHomework8Character::Server_ProcessAttack_Implementation()
 {
-	NetMulticast_StartAttack();
+	NetMulticast_ProcessAttack();
 }
 
-void ANixHomework8Character::NetMulticast_StartAttack_Implementation()
+void ANixHomework8Character::NetMulticast_ProcessAttack_Implementation()
 {
 	bAttacking = false;
 }
@@ -190,21 +190,51 @@ void ANixHomework8Character::TakeDamage(const FInputActionValue& Value)
 {
 	if (!bInDamagedState && Value.Get<bool>())
 	{
-		bDamaged = true;
-		bInDamagedState = true;
-		TakenDamage = FMath::RandRange(0, 100);
-		GEngine->AddOnScreenDebugMessage(2, 10.f, FColor::Cyan, FString::Printf(TEXT("Take damage: %d"), TakenDamage));
+		Server_TakeDamage();
 	}
 }
 
-void ANixHomework8Character::StartTakeDamage()
+void ANixHomework8Character::Server_TakeDamage_Implementation()
 {
-	bDamaged = false;
+	if (!ensureMsgf(DamageAnim, TEXT("DamageAnim is not set on %s"), *GetName()))
+	{
+		return;
+	}
+
+	bDamaged = true;
+	bInDamagedState = true;
+	TakenDamage = FMath::RandRange(50, 100);
+
+	float Duration = DamageAnim->GetPlayLength() / 2;
+	GetWorldTimerManager().SetTimer(
+		AttackTimerHandle,
+		this,
+		&ANixHomework8Character::Server_ProcessDamage,
+		Duration,
+		false
+	);
+
+	NetMulticast_TakeDamage();
+}
+
+void ANixHomework8Character::NetMulticast_TakeDamage_Implementation()
+{
+	GEngine->AddOnScreenDebugMessage(2, 10.f, FColor::Cyan, FString::Printf(TEXT("Take damage: %d"), TakenDamage));
 
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
 		PC->SetIgnoreMoveInput(true);
 	}
+}
+
+void ANixHomework8Character::Server_ProcessDamage_Implementation()
+{
+	NetMulticast_ProcessDamage();
+}
+
+void ANixHomework8Character::NetMulticast_ProcessDamage_Implementation()
+{
+	bDamaged = false;
 }
 
 void ANixHomework8Character::FinishTakeDamage()
@@ -239,6 +269,9 @@ void ANixHomework8Character::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME(ANixHomework8Character, ForwardInputValue);
 	DOREPLIFETIME(ANixHomework8Character, RightInputValue);
 	DOREPLIFETIME(ANixHomework8Character, bAttacking);
+	DOREPLIFETIME(ANixHomework8Character, bDamaged);
+	DOREPLIFETIME(ANixHomework8Character, TakenDamage);
+	DOREPLIFETIME(ANixHomework8Character, bInDamagedState);
 }
 
 void ANixHomework8Character::Server_DoMove_Implementation(FVector2D MovementVector)
@@ -308,13 +341,17 @@ void ANixHomework8Character::DoJumpEnd()
 
 void ANixHomework8Character::Server_Attack_Implementation(bool Value)
 {
+	if (!ensureMsgf(AttackAnim, TEXT("AttackAnim is not set on %s"), *GetName()))
+	{
+		return;
+	}
+
 	bAttacking = Value;
 	float Duration = AttackAnim->GetPlayLength() / 2;
-
 	GetWorldTimerManager().SetTimer(
 		AttackTimerHandle,
 		this,
-		&ANixHomework8Character::Server_StartAttack,
+		&ANixHomework8Character::Server_ProcessAttack,
 		Duration,
 		false
 	);

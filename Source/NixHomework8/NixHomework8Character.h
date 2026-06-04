@@ -65,6 +65,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
 	UAnimSequence* AttackAnim;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+	UAnimSequence* DamageAnim;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Animation")
 	UAnimMontage* SecondAttackMontage;
 
@@ -147,11 +150,11 @@ public:
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Actions")
-	void Server_StartAttack();
+	UFUNCTION(Server, Reliable, Category = "Actions")
+	void Server_ProcessAttack();
 
 	UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Actions")
-	void NetMulticast_StartAttack();
+	void NetMulticast_ProcessAttack();
 
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Actions")
 	void Server_FinishAttack();
@@ -162,8 +165,17 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void HitDamage();
 
-	UFUNCTION(BlueprintCallable, Category = "Actions")
-	void StartTakeDamage();
+	UFUNCTION(Server, Reliable, Category = "Actions")
+	void Server_TakeDamage();
+
+	UFUNCTION(NetMulticast, Reliable, Category = "Actions")
+	void NetMulticast_TakeDamage();
+
+	UFUNCTION(Server, Reliable, Category = "Actions")
+	void Server_ProcessDamage();
+
+	UFUNCTION(NetMulticast, Reliable, Category = "Actions")
+	void NetMulticast_ProcessDamage();
 
 	UFUNCTION(BlueprintCallable, Category = "Actions")
 	void FinishTakeDamage();
@@ -177,15 +189,17 @@ public:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 	bool bAttacking = false;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 	bool bDamaged = false;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 	int TakenDamage;
 
 private:
+	UPROPERTY(Replicated)
 	bool bInDamagedState = false;
 
 	FTimerHandle AttackTimerHandle;
+	FTimerHandle DamageTimerHandle;
 };
 
