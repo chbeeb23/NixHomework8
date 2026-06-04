@@ -132,25 +132,7 @@ void ANixHomework8Character::Attack(const FInputActionValue& Value)
 
 void ANixHomework8Character::SecondAttack(const FInputActionValue& Value)
 {
-	if (!Value.Get<bool>())
-	{
-		return;
-	}
-
-	if (!SecondAttackMontage) return;
-
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (!AnimInstance)
-	{
-		return;
-	}
-
-	if (APlayerController* PC = Cast<APlayerController>(GetController()))
-	{
-		PC->SetIgnoreMoveInput(true);
-	}
-
-	AnimInstance->Montage_Play(SecondAttackMontage, 1.0f);
+	Server_SecondAttack(Value.Get<bool>());
 }
 
 void ANixHomework8Character::Server_ProcessAttack_Implementation()
@@ -366,4 +348,30 @@ void ANixHomework8Character::NetMulticast_Attack_Implementation(bool Value)
 	{
 		PC->SetIgnoreMoveInput(true);
 	}
+}
+
+void ANixHomework8Character::Server_SecondAttack_Implementation(bool Value)
+{
+	NetMulticast_SecondAttack(Value);
+}
+
+void ANixHomework8Character::NetMulticast_SecondAttack_Implementation(bool Value)
+{
+	if (!SecondAttackMontage)
+	{
+		return;
+	}
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (!AnimInstance)
+	{
+		return;
+	}
+
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		PC->SetIgnoreMoveInput(true);
+	}
+
+	AnimInstance->Montage_Play(SecondAttackMontage, 1.0f);
 }

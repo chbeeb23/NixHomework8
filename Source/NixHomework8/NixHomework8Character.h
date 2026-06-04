@@ -144,6 +144,12 @@ public:
 	UFUNCTION(NetMulticast, Reliable, Category = "Input")
 	virtual void NetMulticast_Attack(bool Value);
 
+	UFUNCTION(Server, Reliable, Category = "Input")
+	virtual void Server_SecondAttack(bool Value);
+
+	UFUNCTION(NetMulticast, Reliable, Category = "Input")
+	virtual void NetMulticast_SecondAttack(bool Value);
+
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
