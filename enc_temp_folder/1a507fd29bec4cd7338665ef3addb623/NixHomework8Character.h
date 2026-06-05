@@ -196,11 +196,11 @@ public:
 	UFUNCTION(NetMulticast, Reliable, Category = "Actions")
 	void NetMulticast_ProcessDamage();
 
-	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "Actions")
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Actions")
 	void Server_FinishTakeDamage();
 
 	UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Actions")
-	void NetMulticast_FinishTakeDamage(const FString& PlayerName);
+	void NetMulticast_FinishTakeDamage();
 
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 	float ForwardInputValue;

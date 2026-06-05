@@ -66,7 +66,10 @@ void ANixHomework8Character::BeginPlay()
 
 	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
 	{
-		AnimInstance->OnMontageEnded.AddDynamic(this, &ANixHomework8Character::OnSecondAttackMontageEnded);
+		AnimInstance->OnMontageEnded.AddDynamic(
+			this,
+			&ANixHomework8Character::OnSecondAttackMontageEnded
+		);
 	}
 }
 
@@ -166,7 +169,13 @@ void ANixHomework8Character::Server_HitDamage_Implementation(EAttackHand AttackH
 
 	TArray<FOverlapResult> Results;
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(100.f);
-	GetWorld()->OverlapMultiByChannel(Results, SocketLocation, FQuat::Identity, ECC_Pawn, Sphere);
+	GetWorld()->OverlapMultiByChannel(
+		Results,
+		SocketLocation,
+		FQuat::Identity,
+		ECC_Pawn,
+		Sphere
+	);
 
 	for (const FOverlapResult& Result : Results)
 	{
@@ -185,7 +194,14 @@ void ANixHomework8Character::NetMulticast_HitDamage_Implementation(EAttackHand A
 {
 	FName Socket = AttackHand == EAttackHand::Right ? RightAttackSocket : LeftAttackSocket;
 	FVector SocketLocation = GetMesh()->GetSocketLocation(Socket);
-	UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), OnAttackParticle, SocketLocation, FRotator::ZeroRotator, FVector(0.2f));
+
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		GetWorld(),
+		OnAttackParticle,
+		SocketLocation,
+		FRotator::ZeroRotator,
+		FVector(0.2f)
+	);
 }
 
 void ANixHomework8Character::TakeDamage(const FInputActionValue& Value)
@@ -211,8 +227,15 @@ void ANixHomework8Character::Server_TakeDamage_Implementation()
 	bDamaged = true;
 	bInDamagedState = true;
 	TakenDamage = FMath::RandRange(50, 100);
+
 	float Duration = DamageAnim->GetPlayLength() / 2;
-	GetWorldTimerManager().SetTimer(AttackTimerHandle, this, &ANixHomework8Character::Server_ProcessDamage, Duration, false);
+	GetWorldTimerManager().SetTimer(
+		AttackTimerHandle,
+		this,
+		&ANixHomework8Character::Server_ProcessDamage,
+		Duration,
+		false
+	);
 
 	NetMulticast_TakeDamage();
 }
@@ -239,17 +262,22 @@ void ANixHomework8Character::NetMulticast_ProcessDamage_Implementation()
 
 void ANixHomework8Character::Server_FinishTakeDamage_Implementation()
 {
-	NetMulticast_FinishTakeDamage(GetName());
+	NetMulticast_FinishTakeDamage();
 }
 
-void ANixHomework8Character::NetMulticast_FinishTakeDamage_Implementation(const FString& PlayerName)
+void ANixHomework8Character::NetMulticast_FinishTakeDamage_Implementation()
 {
 	bInDamagedState = false;
 	ResetMovement();
 
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(3, 5.f, FColor::Green, FString::Printf(TEXT("%s recovered"), *PlayerName));
+		GEngine->AddOnScreenDebugMessage(
+			-1,
+			5.f,
+			FColor::Green,
+			FString::Printf(TEXT("%s recovered"), *GetName())
+		);
 	}
 }
 
@@ -358,7 +386,14 @@ void ANixHomework8Character::Server_Attack_Implementation()
 
 	bAttacking = true;
 	float Duration = AttackAnim->GetPlayLength() / 2;
-	GetWorldTimerManager().SetTimer(AttackTimerHandle, this, &ANixHomework8Character::Server_ProcessAttack, Duration, false);
+	GetWorldTimerManager().SetTimer(
+		AttackTimerHandle,
+		this,
+		&ANixHomework8Character::Server_ProcessAttack,
+		Duration,
+		false
+	);
+
 	NetMulticast_Attack();
 }
 
