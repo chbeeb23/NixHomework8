@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "NixHomework8Character.h"
+#include "Engine/OverlapResult.h"
 #include "Engine/LocalPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -127,12 +128,18 @@ void ANixHomework8Character::LookCompleted(const FInputActionValue& Value)
 
 void ANixHomework8Character::Attack(const FInputActionValue& Value)
 {
-	Server_Attack(Value.Get<bool>());
+	if (Value.Get<bool>())
+	{
+		Server_Attack();
+	}
 }
 
 void ANixHomework8Character::SecondAttack(const FInputActionValue& Value)
 {
-	Server_SecondAttack(Value.Get<bool>());
+	if (Value.Get<bool>())
+	{
+		Server_SecondAttack();
+	}
 }
 
 void ANixHomework8Character::Server_ProcessAttack_Implementation()
@@ -155,9 +162,38 @@ void ANixHomework8Character::Client_FinishAttack_Implementation()
 	ResetMovement();
 }
 
-void ANixHomework8Character::HitDamage()
+void ANixHomework8Character::Server_HitDamage_Implementation(EAttackHand AttackHand)
 {
-	FVector SocketLocation = GetMesh()->GetSocketLocation(AttackSocket);
+	FName Socket = AttackHand == EAttackHand::Right ? RightAttackSocket : LeftAttackSocket;
+	FVector SocketLocation = GetMesh()->GetSocketLocation(Socket);
+
+	TArray<FOverlapResult> Results;
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(100.f);
+	GetWorld()->OverlapMultiByChannel(
+		Results,
+		SocketLocation,
+		FQuat::Identity,
+		ECC_Pawn,
+		Sphere
+	);
+
+	for (const FOverlapResult& Result : Results)
+	{
+		ANixHomework8Character* Actor = Cast<ANixHomework8Character>(Result.GetActor());
+
+		if (Actor)
+		{
+			Actor->Server_TakeDamage();
+		}
+	}
+
+	NetMulticast_HitDamage(AttackHand);
+}
+
+void ANixHomework8Character::NetMulticast_HitDamage_Implementation(EAttackHand AttackHand)
+{
+	FName Socket = AttackHand == EAttackHand::Right ? RightAttackSocket : LeftAttackSocket;
+	FVector SocketLocation = GetMesh()->GetSocketLocation(Socket);
 
 	UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 		GetWorld(),
@@ -170,7 +206,7 @@ void ANixHomework8Character::HitDamage()
 
 void ANixHomework8Character::TakeDamage(const FInputActionValue& Value)
 {
-	if (!bInDamagedState && Value.Get<bool>())
+	if (Value.Get<bool>())
 	{
 		Server_TakeDamage();
 	}
@@ -178,6 +214,11 @@ void ANixHomework8Character::TakeDamage(const FInputActionValue& Value)
 
 void ANixHomework8Character::Server_TakeDamage_Implementation()
 {
+	if (bInDamagedState)
+	{
+		return;
+	}
+
 	if (!ensureMsgf(DamageAnim, TEXT("DamageAnim is not set on %s"), *GetName()))
 	{
 		return;
@@ -321,14 +362,14 @@ void ANixHomework8Character::DoJumpEnd()
 	StopJumping();
 }
 
-void ANixHomework8Character::Server_Attack_Implementation(bool Value)
+void ANixHomework8Character::Server_Attack_Implementation()
 {
 	if (!ensureMsgf(AttackAnim, TEXT("AttackAnim is not set on %s"), *GetName()))
 	{
 		return;
 	}
 
-	bAttacking = Value;
+	bAttacking = true;
 	float Duration = AttackAnim->GetPlayLength() / 2;
 	GetWorldTimerManager().SetTimer(
 		AttackTimerHandle,
@@ -338,10 +379,10 @@ void ANixHomework8Character::Server_Attack_Implementation(bool Value)
 		false
 	);
 
-	NetMulticast_Attack(Value);
+	NetMulticast_Attack();
 }
 
-void ANixHomework8Character::NetMulticast_Attack_Implementation(bool Value)
+void ANixHomework8Character::NetMulticast_Attack_Implementation()
 {
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (PC && bAttacking)
@@ -350,12 +391,12 @@ void ANixHomework8Character::NetMulticast_Attack_Implementation(bool Value)
 	}
 }
 
-void ANixHomework8Character::Server_SecondAttack_Implementation(bool Value)
+void ANixHomework8Character::Server_SecondAttack_Implementation()
 {
-	NetMulticast_SecondAttack(Value);
+	NetMulticast_SecondAttack();
 }
 
-void ANixHomework8Character::NetMulticast_SecondAttack_Implementation(bool Value)
+void ANixHomework8Character::NetMulticast_SecondAttack_Implementation()
 {
 	if (!SecondAttackMontage)
 	{

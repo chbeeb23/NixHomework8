@@ -13,6 +13,13 @@ class UInputAction;
 class UNiagaraSystem;
 struct FInputActionValue;
 
+UENUM(BlueprintType)
+enum class EAttackHand : uint8
+{
+	Left    UMETA(DisplayName = "Left Hand"),
+	Right   UMETA(DisplayName = "Right Hand")
+};
+
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
 /**
@@ -75,7 +82,10 @@ protected:
 	UNiagaraSystem* OnAttackParticle;
 
 	UPROPERTY(EditDefaultsOnly, Category = "FX")
-	FName AttackSocket;
+	FName RightAttackSocket;
+
+	UPROPERTY(EditDefaultsOnly, Category = "FX")
+	FName LeftAttackSocket;
 
 	virtual void BeginPlay() override;
 
@@ -139,16 +149,16 @@ public:
 	virtual void DoJumpEnd();
 
 	UFUNCTION(Server, Reliable, Category = "Input")
-	virtual void Server_Attack(bool Value);
+	virtual void Server_Attack();
 
 	UFUNCTION(NetMulticast, Reliable, Category = "Input")
-	virtual void NetMulticast_Attack(bool Value);
+	virtual void NetMulticast_Attack();
 
 	UFUNCTION(Server, Reliable, Category = "Input")
-	virtual void Server_SecondAttack(bool Value);
+	virtual void Server_SecondAttack();
 
 	UFUNCTION(NetMulticast, Reliable, Category = "Input")
-	virtual void NetMulticast_SecondAttack(bool Value);
+	virtual void NetMulticast_SecondAttack();
 
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
@@ -168,8 +178,11 @@ public:
 	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "Actions")
 	void Client_FinishAttack();
 
-	UFUNCTION(BlueprintCallable)
-	void HitDamage();
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void Server_HitDamage(EAttackHand AttackHand);
+
+	UFUNCTION(NetMulticast, Reliable, BlueprintCallable)
+	void NetMulticast_HitDamage(EAttackHand AttackHand);
 
 	UFUNCTION(Server, Reliable, Category = "Actions")
 	void Server_TakeDamage();
