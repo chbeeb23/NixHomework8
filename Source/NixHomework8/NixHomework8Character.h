@@ -175,8 +175,8 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Actions")
 	void Server_FinishAttack();
 
-	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "Actions")
-	void Client_FinishAttack();
+	UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Actions")
+	void NetMulticast_FinishAttack();
 
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void Server_HitDamage(EAttackHand AttackHand);
@@ -190,17 +190,14 @@ public:
 	UFUNCTION(NetMulticast, Reliable, Category = "Actions")
 	void NetMulticast_TakeDamage();
 
-	UFUNCTION(Server, Reliable, Category = "Actions")
-	void Server_ProcessDamage();
+	UFUNCTION()
+	void TakeDamageInternal();
 
-	UFUNCTION(NetMulticast, Reliable, Category = "Actions")
-	void NetMulticast_ProcessDamage();
+	UFUNCTION()
+	void OnDamageProcessed();
 
-	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "Actions")
-	void Server_FinishTakeDamage();
-
-	UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Actions")
-	void NetMulticast_FinishTakeDamage(const FString& PlayerName);
+	UFUNCTION(BlueprintCallable)
+	void OnDamageFinished();
 
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 	float ForwardInputValue;
@@ -223,5 +220,6 @@ private:
 
 	FTimerHandle AttackTimerHandle;
 	FTimerHandle DamageTimerHandle;
+	FTimerHandle FinishDamageTimerHandle;
 };
 

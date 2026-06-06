@@ -151,10 +151,10 @@ void ANixHomework8Character::NetMulticast_ProcessAttack_Implementation()
 
 void ANixHomework8Character::Server_FinishAttack_Implementation()
 {
-	Client_FinishAttack();
+	NetMulticast_FinishAttack();
 }
 
-void ANixHomework8Character::Client_FinishAttack_Implementation()
+void ANixHomework8Character::NetMulticast_FinishAttack_Implementation()
 {
 	ResetMovement();
 }
@@ -174,7 +174,7 @@ void ANixHomework8Character::Server_HitDamage_Implementation(EAttackHand AttackH
 
 		if (Actor)
 		{
-			Actor->Server_TakeDamage();
+			Actor->TakeDamageInternal();
 		}
 	}
 
@@ -198,6 +198,11 @@ void ANixHomework8Character::TakeDamage(const FInputActionValue& Value)
 
 void ANixHomework8Character::Server_TakeDamage_Implementation()
 {
+	TakeDamageInternal();
+}
+
+void ANixHomework8Character::TakeDamageInternal()
+{
 	if (bInDamagedState)
 	{
 		return;
@@ -211,8 +216,9 @@ void ANixHomework8Character::Server_TakeDamage_Implementation()
 	bDamaged = true;
 	bInDamagedState = true;
 	TakenDamage = FMath::RandRange(50, 100);
-	float Duration = DamageAnim->GetPlayLength() / 2;
-	GetWorldTimerManager().SetTimer(AttackTimerHandle, this, &ANixHomework8Character::Server_ProcessDamage, Duration, false);
+	float Duration = DamageAnim->GetPlayLength();
+	GetWorldTimerManager().SetTimer(DamageTimerHandle, this, &ANixHomework8Character::OnDamageProcessed, Duration / 2, false);
+	GetWorldTimerManager().SetTimer(FinishDamageTimerHandle, this, &ANixHomework8Character::OnDamageFinished, Duration, false);
 
 	NetMulticast_TakeDamage();
 }
@@ -220,36 +226,22 @@ void ANixHomework8Character::Server_TakeDamage_Implementation()
 void ANixHomework8Character::NetMulticast_TakeDamage_Implementation()
 {
 	GEngine->AddOnScreenDebugMessage(2, 10.f, FColor::Cyan, FString::Printf(TEXT("Take damage: %d"), TakenDamage));
-
-	if (APlayerController* PC = Cast<APlayerController>(GetController()))
-	{
-		PC->SetIgnoreMoveInput(true);
-	}
+	GetCharacterMovement()->DisableMovement();
 }
 
-void ANixHomework8Character::Server_ProcessDamage_Implementation()
-{
-	NetMulticast_ProcessDamage();
-}
-
-void ANixHomework8Character::NetMulticast_ProcessDamage_Implementation()
+void ANixHomework8Character::OnDamageProcessed()
 {
 	bDamaged = false;
 }
 
-void ANixHomework8Character::Server_FinishTakeDamage_Implementation()
-{
-	NetMulticast_FinishTakeDamage(GetName());
-}
-
-void ANixHomework8Character::NetMulticast_FinishTakeDamage_Implementation(const FString& PlayerName)
+void ANixHomework8Character::OnDamageFinished()
 {
 	bInDamagedState = false;
 	ResetMovement();
 
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(3, 5.f, FColor::Green, FString::Printf(TEXT("%s recovered"), *PlayerName));
+		GEngine->AddOnScreenDebugMessage(3, 5.f, FColor::Green, FString::Printf(TEXT("%s recovered"), *GetName()));
 	}
 }
 
@@ -260,16 +252,12 @@ void ANixHomework8Character::OnSecondAttackMontageEnded(UAnimMontage* Montage, b
 		return;
 	}
 
-	Client_FinishAttack();
+	ResetMovement();
 }
 
 void ANixHomework8Character::ResetMovement()
 {
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (PC)
-	{
-		PC->ResetIgnoreMoveInput();
-	}
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 }
 
 void ANixHomework8Character::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -364,11 +352,7 @@ void ANixHomework8Character::Server_Attack_Implementation()
 
 void ANixHomework8Character::NetMulticast_Attack_Implementation()
 {
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (PC && bAttacking)
-	{
-		PC->SetIgnoreMoveInput(true);
-	}
+	GetCharacterMovement()->DisableMovement();
 }
 
 void ANixHomework8Character::Server_SecondAttack_Implementation()
@@ -389,10 +373,6 @@ void ANixHomework8Character::NetMulticast_SecondAttack_Implementation()
 		return;
 	}
 
-	if (APlayerController* PC = Cast<APlayerController>(GetController()))
-	{
-		PC->SetIgnoreMoveInput(true);
-	}
-
+	GetCharacterMovement()->DisableMovement();
 	AnimInstance->Montage_Play(SecondAttackMontage, 1.0f);
 }
