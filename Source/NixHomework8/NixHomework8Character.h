@@ -182,7 +182,7 @@ public:
 	void Server_HitDamage(EAttackHand AttackHand);
 
 	UFUNCTION(NetMulticast, Reliable, BlueprintCallable)
-	void NetMulticast_HitDamage(EAttackHand AttackHand);
+	void NetMulticast_HitDamage(AActor* Actor);
 
 	UFUNCTION(Server, Reliable, Category = "Actions")
 	void Server_TakeDamage();

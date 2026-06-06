@@ -170,22 +170,17 @@ void ANixHomework8Character::Server_HitDamage_Implementation(EAttackHand AttackH
 
 	for (const FOverlapResult& Result : Results)
 	{
-		ANixHomework8Character* Actor = Cast<ANixHomework8Character>(Result.GetActor());
-
-		if (Actor)
+		if (ANixHomework8Character* Actor = Cast<ANixHomework8Character>(Result.GetActor()))
 		{
 			Actor->TakeDamageInternal();
+			NetMulticast_HitDamage(Actor);
 		}
 	}
-
-	NetMulticast_HitDamage(AttackHand);
 }
 
-void ANixHomework8Character::NetMulticast_HitDamage_Implementation(EAttackHand AttackHand)
+void ANixHomework8Character::NetMulticast_HitDamage_Implementation(AActor* Actor)
 {
-	FName Socket = AttackHand == EAttackHand::Right ? RightAttackSocket : LeftAttackSocket;
-	FVector SocketLocation = GetMesh()->GetSocketLocation(Socket);
-	UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), OnAttackParticle, SocketLocation, FRotator::ZeroRotator, FVector(0.2f));
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), OnAttackParticle, Actor->GetActorLocation(), FRotator::ZeroRotator, FVector(0.2f));
 }
 
 void ANixHomework8Character::TakeDamage(const FInputActionValue& Value)
